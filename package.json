@@ -1,0 +1,10 @@
+{
+    "name": "satpam",
+    "version": "0.0.0",
+    "description": "An unopinionated session manager for building SSR app.",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+      "/dist"
+    ]
+}

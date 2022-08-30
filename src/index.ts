@@ -1,0 +1,1 @@
+export { sayHello, sayGoodby } from './hello'
