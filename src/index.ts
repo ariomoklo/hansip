@@ -1,2 +1,1 @@
-
-export { Satpam } from "./satpam"
+export { Satpam } from './satpam';
