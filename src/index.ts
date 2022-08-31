@@ -1,1 +1,2 @@
-export { sayHello, sayGoodby } from './hello'
+
+export { Satpam } from "./satpam"

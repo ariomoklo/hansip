@@ -1,10 +1,24 @@
 {
     "name": "satpam",
     "version": "0.0.0",
-    "description": "An unopinionated session manager for building SSR app.",
+    "description": "Authorization library for building SSR app.",
+    "scripts": {
+        "build": "tsc",
+        "test": "vitest"
+    },
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "files": [
-      "/dist"
-    ]
+        "/dist/**/*"
+    ],
+    "devDependencies": {
+        "mock-req": "^0.2.0",
+        "mock-res": "^0.6.0",
+        "typescript": "^4.8.2",
+        "vitest": "^0.22.1"
+    },
+    "dependencies": {
+        "@types/cookie": "^0.5.1",
+        "cookie": "^0.5.0"
+    }
 }
