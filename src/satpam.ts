@@ -67,8 +67,9 @@ export class Satpam {
    * @memberof Satpam
    */
   private async _urlParamCheck(params: string): Promise<SatpamSession> {
-    const parsed = params.split('&')
-      .map(item => item.split('='))
+    const parsed = params
+      .split('&')
+      .map((item) => item.split('='))
       .reduce((acc, val) => ((acc[val[0]] = val[1]), acc), {});
 
     if (parsed[this.urlCheck]) {
@@ -144,7 +145,7 @@ export class Satpam {
 
       // check on url queries
       if (url.includes('?')) {
-        const [_, queries] = url.split('?')
+        const [_, queries] = url.split('?');
         if (queries !== '') {
           return await this._urlParamCheck(queries);
         }
@@ -152,9 +153,9 @@ export class Satpam {
 
       // check on url hash
       if (url.includes('#')) {
-        const [_, queries] = url.split('#')
+        const [_, queries] = url.split('#');
         if (queries !== '') {
-          return await this._urlParamCheck(queries)
+          return await this._urlParamCheck(queries);
         }
       }
     }
