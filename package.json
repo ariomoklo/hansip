@@ -17,6 +17,7 @@
         "version": "npm run format && git add -A src",
         "postversion": "git push && git push --tags"
     },
+    "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "files": [
