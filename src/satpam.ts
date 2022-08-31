@@ -66,22 +66,22 @@ export class Satpam {
    * @return {SatpamVerifyReturn} status, token
    * @memberof Satpam
    */
-  private _urlParamCheck(params: string): SatpamSession {
+  private async _urlParamCheck(params: string): Promise<SatpamSession> {
     const parsed = params.split('&').reduce((acc, val) => ((acc[val[0]] = val[1]), acc), {});
 
     if (parsed[this.urlCheck]) {
       const token = parsed[this.urlCheck];
-      return this._processToken(token);
+      return await this._processToken(token);
     }
 
-    return this._processToken('');
+    return await this._processToken('');
   }
 
-  private _processToken(token: string): SatpamSession {
+  private async _processToken(token: string): Promise<SatpamSession> {
     if (token === '') {
       if (typeof this.hook === 'function') {
         // get result from hook
-        const result = this.hook(token);
+        const result = await this.hook(token);
 
         // on result type string
         if (typeof result === 'string' && result !== '') {
@@ -101,7 +101,7 @@ export class Satpam {
     }
 
     if (typeof this.hook === 'function') {
-      const result = this.hook(token)
+      const result = await this.hook(token)
       if (result) token = result
     }
 
@@ -122,7 +122,7 @@ export class Satpam {
    * @return {SatpamVerifyReturn} status, token
    * @memberof Satpam
    */
-  public verify(cb: (token: string) => OnVerifyHookReturn = null): SatpamSession {
+  public async verify(cb: (token: string) => OnVerifyHookReturn = null): Promise<SatpamSession> {
     const cookies = this.request.headers['cookie'];
     const cookie = parseCookies(cookies);
 
@@ -130,7 +130,7 @@ export class Satpam {
     this.hook = cb;
 
     if (cookie[name]) {
-      return this._processToken(cookie[name]);
+      return await this._processToken(cookie[name]);
     }
 
     /** return on url check empty */
@@ -143,7 +143,7 @@ export class Satpam {
       const [_, queries] = url.includes('#') ? url.split('#') : url.split('?');
 
       if (queries !== '') {
-        return this._urlParamCheck(queries);
+        return await this._urlParamCheck(queries);
       }
     }
 
@@ -151,16 +151,16 @@ export class Satpam {
     if (this.request.url instanceof URL) {
       const queries = this.request.url.searchParams;
       if (queries.has(this.urlCheck)) {
-        this._processToken(queries[this.urlCheck]);
+        return await this._processToken(queries[this.urlCheck]);
       }
 
       const hash = this.request.url.hash;
       if (hash !== '') {
-        return this._urlParamCheck(hash);
+        return await this._urlParamCheck(hash);
       }
     }
 
-    return this._processToken('');
+    return await this._processToken('');
   }
 
   /**
