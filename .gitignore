@@ -5,3 +5,8 @@ node_modules
 # compiled code
 /dist
 .gitignore
+
+# lock files
+pnpm-lock.yaml
+package-lock.yaml
+yarn-lock.yaml
