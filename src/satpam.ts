@@ -90,19 +90,19 @@ export class Satpam {
             this.setSession(this.token);
             return this.session;
           } else {
-            this.session = { status: true, token: this.token }
+            this.session = { status: true, token: this.token };
             return this.session;
           }
         }
       }
 
       this.session = { status: false, token: '' };
-      return this.session
+      return this.session;
     }
 
     if (typeof this.hook === 'function') {
-      const result = await this.hook(token)
-      if (result) token = result
+      const result = await this.hook(token);
+      if (result) token = result;
     }
 
     this.token = token;
@@ -110,7 +110,7 @@ export class Satpam {
       this.setSession(this.token);
       return this.session;
     } else {
-      this.session = { status: true, token: this.token }
+      this.session = { status: true, token: this.token };
       return this.session;
     }
   }
@@ -179,13 +179,13 @@ export class Satpam {
     const cookieString = serializeCookie(this.name ?? 'satpam', token, opt);
     this.session = { status: true, token: this.token };
 
-    const headers = this.response.headers
-    if (typeof headers === "object") {
+    const headers = this.response.headers;
+    if (typeof headers === 'object') {
       if (typeof headers['setHeader'] === 'function') {
         this.response.headers['setHeader']('Set-Cookie', cookieString);
         return cookieString;
       }
-  
+
       if (this.response.headers instanceof Headers) {
         this.response.headers.set('Set-Cookie', cookieString);
         return cookieString;
