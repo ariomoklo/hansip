@@ -1,7 +1,7 @@
 import type { CookieSerializeOptions } from 'cookie';
 import { parseCookies, serializeCookie } from './utility';
 
-export type OnVerifyHookReturn = string | undefined | null | boolean;
+export type OnVerifyHookReturn = string | undefined | null;
 
 export type SatpamSession = {
   status: boolean;
@@ -89,22 +89,30 @@ export class Satpam {
           if (this.autoSetCookie) {
             this.setSession(this.token);
             return this.session;
+          } else {
+            this.session = { status: true, token: this.token }
+            return this.session;
           }
-
-          return { status: true, token: this.token };
         }
       }
 
-      return { status: false, token: '' };
+      this.session = { status: false, token: '' };
+      return this.session
+    }
+
+    if (typeof this.hook === 'function') {
+      const result = this.hook(token)
+      if (result) token = result
     }
 
     this.token = token;
     if (this.autoSetCookie) {
       this.setSession(this.token);
       return this.session;
+    } else {
+      this.session = { status: true, token: this.token }
+      return this.session;
     }
-
-    return { status: true, token: '' };
   }
 
   /**
@@ -171,13 +179,19 @@ export class Satpam {
     const cookieString = serializeCookie(this.name ?? 'satpam', token, opt);
     this.session = { status: true, token: this.token };
 
-    if (typeof this.response.headers['setHeader'] === 'function') {
-      this.response.headers['setHeader']('Set-Cookie', cookieString);
-      return cookieString;
-    }
+    const headers = this.response.headers
+    if (typeof headers === "object") {
+      if (typeof headers['setHeader'] === 'function') {
+        this.response.headers['setHeader']('Set-Cookie', cookieString);
+        return cookieString;
+      }
+  
+      if (this.response.headers instanceof Headers) {
+        this.response.headers.set('Set-Cookie', cookieString);
+        return cookieString;
+      }
 
-    if (this.response.headers instanceof Headers) {
-      this.response.headers.set('Set-Cookie', cookieString);
+      this.response.headers['Set-Cookie'] = cookieString;
       return cookieString;
     }
 
@@ -185,10 +199,9 @@ export class Satpam {
     if ('window' in globalThis) {
       window.document.cookie = cookieString;
       return cookieString;
-    } else {
-      this.response.headers['Set-Cookie'] = cookieString;
-      return cookieString;
     }
+
+    return cookieString;
   }
 
   /**
