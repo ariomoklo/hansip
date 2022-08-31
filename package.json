@@ -37,7 +37,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/ariomoklo/satpam.git"
+        "url": "git+https://github.com/ariomoklo/hansip.git"
     },
     "keywords": [
         "ssr",

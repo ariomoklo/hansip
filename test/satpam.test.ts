@@ -16,12 +16,12 @@ const withToken = {
 	},
 }
 
-test('Satpam verify has no token', () => {
+test('Satpam verify has no token', async () => {
     const request = new MockReq(noToken)
     const response = new MockRes()
 
     const satpam = new Satpam(request, response)
-    const { status, token } = satpam.verify()
+    const { status, token } = await satpam.verify()
 
     it ('has status false', () => {
         expect(status).toBeFalsy()
@@ -32,12 +32,12 @@ test('Satpam verify has no token', () => {
     })
 })
 
-test('Satpam verify has token on cookie', () => {
+test('Satpam verify has token on cookie', async () => {
     const request = new MockReq(withToken)
     const response = new MockRes()
 
     const satpam = new Satpam(request, response)
-    const { status, token } = satpam.verify()
+    const { status, token } = await satpam.verify()
 
     it ('has status true', () => {
         expect(status).toBeTruthy()
