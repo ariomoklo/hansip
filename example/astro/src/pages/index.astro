@@ -3,13 +3,13 @@ import Layout from '../layouts/Layout.astro';
 import Card from '../components/Card.astro';
 import { Satpam } from "./../../../../src/satpam";
 
-const satpam = new Satpam(Astro.request, Astro.response, {
+const satpam = new Satpam({
 	name: 'satpam_astro',
 	urlCheck: 'access_token',
 	autoSetCookie: true
 })
 
-const { status } = await satpam.verify()
+const { status } = await satpam.verify(Astro.request)
 
 if (!status) {
 	Astro.redirect('/login')

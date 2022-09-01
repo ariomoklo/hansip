@@ -12,5 +12,12 @@ export function parseCookies(cookies?: string | object | null, options?: CookieP
 }
 
 export function serializeCookie(name: string, token: string, options?: CookieSerializeOptions) {
-  return cookie.serialize(name, token, options);
+
+  const opts = {
+    maxAge: 7 * 24 * 60 * 60, // 7 days
+    sameSite: true,           // set sameSite to strict
+    ...options
+  }
+
+  return cookie.serialize(name, token, opts);
 }

@@ -1,4 +1,4 @@
-import type { CookieSerializeOptions } from 'cookie';
+import { CookieSerializeOptions } from 'cookie';
 import { parseCookies, serializeCookie } from './utility';
 
 export type OnVerifyHookReturn = string | undefined | null;
@@ -44,14 +44,7 @@ export class Satpam {
   /** auto set cookie flag */
   private autoSetCookie: boolean;
 
-  constructor(
-    req: { headers: object | Headers; url: string | URL },
-    res: { headers: object | Headers },
-    opt: SatpamOptions = {},
-  ) {
-    this.request = req;
-    this.response = res;
-
+  constructor(opt: SatpamOptions = {}) {
     this.name = opt.name ?? 'satpam';
     this.urlCheck = opt.urlCheck ?? '';
     this.autoSetCookie = opt.autoSetCookie ?? true;
@@ -63,21 +56,20 @@ export class Satpam {
    *
    * @private
    * @param {string} params
-   * @return {SatpamVerifyReturn} status, token
+   * @return {string} token
    * @memberof Satpam
    */
-  private async _urlParamCheck(params: string): Promise<SatpamSession> {
+  private _urlParamCheck(params: string, key: string): string {
     const parsed = params
       .split('&')
       .map((item) => item.split('='))
       .reduce((acc, val) => ((acc[val[0]] = val[1]), acc), {});
 
-    if (parsed[this.urlCheck]) {
-      const token = parsed[this.urlCheck];
-      return await this._processToken(token);
+    if (parsed[key]) {
+      return parsed[key]
     }
 
-    return await this._processToken('');
+    return ''
   }
 
   private async _processToken(token: string): Promise<SatpamSession> {
@@ -118,36 +110,28 @@ export class Satpam {
     }
   }
 
-  /**
-   * Verify jwt token exist
-   *
-   * @param {OnVerifyHook} Hook on token found
-   * @return {SatpamVerifyReturn} status, token
-   * @memberof Satpam
-   */
-  public async verify(cb: (token: string) => OnVerifyHookReturn = null): Promise<SatpamSession> {
-    const cookies = this.request.headers['cookie'];
-    const cookie = parseCookies(cookies);
-
-    const name = this.name;
-    this.hook = cb;
-
-    if (cookie[name]) {
-      return await this._processToken(cookie[name]);
+  private _cookie(cookies: string): string {
+    const parsed = parseCookies(cookies)
+    if (parsed[this.name]) {
+      return parsed[this.name]
     }
 
-    /** return on url check empty */
-    if (this.urlCheck === '' || !this.request.url) return this._processToken('');
+    return ''
+  }
+
+  private _url(url: string | URL, key: string = null): string {
+
+    // query / hash parameter key
+    key = key ?? this.urlCheck ?? 'access_token'
 
     /** check on url string */
-    if (typeof this.request.url === 'string') {
-      const url = this.request.url;
+    if (typeof url === 'string') {
 
       // check on url queries
       if (url.includes('?')) {
         const [_, queries] = url.split('?');
         if (queries !== '') {
-          return await this._urlParamCheck(queries);
+          return this._urlParamCheck(queries, key);
         }
       }
 
@@ -155,23 +139,57 @@ export class Satpam {
       if (url.includes('#')) {
         const [_, queries] = url.split('#');
         if (queries !== '') {
-          return await this._urlParamCheck(queries);
+          return this._urlParamCheck(queries, key);
         }
       }
     }
 
     /** check on url as URL instance */
-    if (this.request.url instanceof URL) {
-      const queries = this.request.url.searchParams;
-      if (queries.has(this.urlCheck)) {
-        return await this._processToken(queries[this.urlCheck]);
+    if (url instanceof URL) {
+      const queries = url.searchParams;
+      if (queries.has(key)) {
+        return queries[key];
       }
 
-      const hash = this.request.url.hash;
+      const hash = url.hash;
       if (hash !== '') {
-        return await this._urlParamCheck(hash);
+        return this._urlParamCheck(hash, key);
       }
     }
+
+    return ''
+  }
+
+  // TODO:
+  // bikin dua function untuk cek token
+  // - async node(req, res, hook) => auto set pakai res
+  // - async browser(hook) => auto set pakai window
+
+  /**
+   * Verify jwt token exist
+   *
+   * @param {OnVerifyHook} Hook on token found
+   * @return {SatpamVerifyReturn} status, token
+   * @memberof Satpam
+   */
+  public async verify(
+    req: { headers: object | Headers; url: string | URL },
+    hook: (token: string) => OnVerifyHookReturn = null
+  ): Promise<SatpamSession> {
+
+    // set hook function
+    this.hook = hook;
+
+    /** check on cookie */
+    const cookie = this._cookie(req.headers['cookie'])
+    if (cookie) return this._processToken(cookie)
+
+    /** return on url check empty */
+    if (this.urlCheck === '' || !req.url) return this._processToken('');
+
+    /** check on url */
+    const url = this._url(req.url, this.urlCheck)
+    if (url) return this._processToken(url)
 
     return await this._processToken('');
   }
@@ -194,8 +212,8 @@ export class Satpam {
 
     const headers = this.response.headers;
     if (typeof headers === 'object') {
-      if (typeof headers['setHeader'] === 'function') {
-        this.response.headers['setHeader']('Set-Cookie', cookieString);
+      if (Object.keys(headers).length === 0) {
+        this.response.headers['Set-Cookie'] = cookieString;
         return cookieString;
       }
 
@@ -204,8 +222,10 @@ export class Satpam {
         return cookieString;
       }
 
-      this.response.headers['Set-Cookie'] = cookieString;
-      return cookieString;
+      if (typeof headers['setHeader'] === 'function') {
+        this.response.headers['setHeader']('Set-Cookie', cookieString);
+        return cookieString;
+      }
     }
 
     // if on client side
