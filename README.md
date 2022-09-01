@@ -6,28 +6,11 @@ Hansip adalah authorisasi library. Konsep dari hansip adalah authentikasi harusl
 
 ## Usage
 
+>
 > install hansip as dependency
 >
 > `npm install hansip` | `yarn add hansip` | `pnpm add hansip`
-
-### Express example
-
-```ts
-// express simple setup
-import { Satpam } from 'hansip'
-
-app.use(async (req, res) => {
-  const satpam = new Satpam(req, res)
-  const { status, token } = await satpam.verify()
-
-  if (status) {
-    return res.redirect('/home')
-  } else {
-    return res.redirect('login')
-  }
-})
-
-```
+>
 
 ### Astro example
 
