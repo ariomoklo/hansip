@@ -2,7 +2,7 @@
 
 Authorization library for building SSR app.
 
-Hansip adalah authorisasi library. Konsep dari hansip adalah authentikasi haruslah berasal dari API dan aplikasi front-end hanya melakukan authorisasi terhadap token yang diberikan oleh API. Hansip akan mencari token pada http request dan menyimpannya dalam cookie.
+Hansip adalah authorisasi library. Konsep dari hansip adalah authentikasi haruslah berasal dari API dan aplikasi front-end hanya melakukan authorisasi terhadap token yang diberikan oleh API. Hansip akan mencari token dalam cookie / header / url mengikuti kebutuhan mu.
 
 ## Usage
 
@@ -19,25 +19,25 @@ Hansip adalah authorisasi library. Konsep dari hansip adalah authentikasi harusl
 // Astro example
 import { Satpam } from 'hansip'
 
-const satpam = new Satpam(Astro.request, Astro.response, {
-    
-  // cookie name. default to 'satpam'
-  name: 'jwt'   
-  
-  // if urlCheck provided, satpam will read url for parameter 'access_token'
-  urlCheck: 'access_token'
+/** 
+ * create satpam instance with unique prefix.
+ * you can create many satpam instance.
+ */
+const satpam = new Satpam("uniquePrefix")
 
-  // always set cookie instanly when token found
-  autoSetCookie: true
-})
+const cookies = Astro.request.headers.get('cookie') ?? ''
+const session = await satpam.onCookies(cookies, async (token: string) => {
 
-const { status, token } = await satpam.verify(async (token: string) => {
-  // do anything with token. if token not found, will be set as ''
-  // you can return new token here if you want:
-  // token = 'new token'
-  // return token
+  /**
+   * This is validation hook
+   * you can do token validation here.
+   * 
+   * you can return new token here if you want:
+   * token = 'new token'
+   * return token
+   */
 
-  // or do token check
+  /** do token validation */
   if (token) {
     const user = await axios.get('/user/me', {
       headers: { 'Authorization': `Bearer ${token}` }
@@ -47,15 +47,16 @@ const { status, token } = await satpam.verify(async (token: string) => {
     else return null
   }
 
-  // after returning updated token,
-  // satpam will set token to cookie 'jwt'
-  // based on configuration name and autoSetCookie
   return null
 })
 
-if (!status) {
-  Astro.redirect('/login')
+/** redirect on login */
+if (!session.status) {
+  return Astro.redirect('/login')
 }
+
+/** set cookie to response */
+Astro.response.headers.set('Set-Cookie', session.serialized)
 
 ---
 
@@ -72,8 +73,8 @@ import axios from "axios"
 
 export default async function (req, res, next) {
   
-  const satpam = new Satpam(req, res)
-  const { status, token } = await satpam.verify(async (token) => {
+  const satpam = new Satpam("hansip")
+  const session = await satpam.onCookies(req.headers['cookie'], async (token) => {
     
     if (token) {
       const user = await axios.get('/user/me', {
@@ -91,6 +92,7 @@ export default async function (req, res, next) {
     return res.redirect('/login')
   }
 
+  res.headers['cookie'] = session.serialized
   next()
 }
 ```

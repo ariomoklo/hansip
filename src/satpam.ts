@@ -228,7 +228,6 @@ export class Satpam {
     
     let token: string = ''
 
-    /** check on url string */
     if (typeof url === 'string') {
 
       // check on url queries
@@ -246,18 +245,16 @@ export class Satpam {
           token = this._urlParamCheck(queries, name) ?? ''
         }
       }
-    }
 
-    /** check on url as URL instance */
-    if (url instanceof URL) {
+    } else if (url instanceof URL) {
       const queries = url.searchParams;
       if (queries.has(name)) {
-        token = queries[name] ?? ''
-      }
-
-      const hash = url.hash;
-      if (hash !== '') {
-        token = this._urlParamCheck(hash, name) ?? ''
+        token = queries.get(name) ?? ''
+      } else {
+        const hash = url.hash;
+        if (hash !== '') {
+          token = this._urlParamCheck(hash, name) ?? ''
+        }
       }
     }
 
