@@ -1,54 +1,271 @@
 import { CookieSerializeOptions } from 'cookie';
 import { parseCookies, serializeCookie } from './utility';
 
-export type OnVerifyHookReturn = string | undefined | null;
+export type OnValidationReturn = string | undefined | null;
+
+/** Hook for validating token */
+export type validationFunction = (token: string) => OnValidationReturn | Promise<OnValidationReturn>;
 
 export type SatpamSession = {
-  status: boolean;
-  token: string;
+
+  /** current session status */
+  status: boolean
+
+  /** raw token */
+  token: string
+
+  /** cookie serialized token */
+  serialized: string
 };
 
 export type SatpamOptions = {
-  /** cookie name, default: satpam */
-  name?: string;
-
-  /** insert url query or hash parameter name to include url check */
-  urlCheck?: string;
-
-  /** if true, set cookie automaticly on verify function when token found. default: true */
-  autoSetCookie?: boolean;
-};
-
-export class Satpam {
-  /** Request Headers */
-  private request: { headers: object | Headers; url: string | URL };
-
-  /** Response Headers */
-  private response: { headers: object | Headers };
-
-  /** found token */
-  private token: string;
-
-  /** cookie session */
-  private session: SatpamSession;
 
   /** cookie name */
-  private name: string;
+  name?: string
 
-  /** url param/hash to check */
-  private urlCheck: string;
+  /**
+   * cookie options for cookie npm lib
+   * @link https://www.npmjs.com/package/cookie
+   */
+  cookieOptions?: CookieSerializeOptions
 
-  /** hook on verify done */
-  private hook: (token: string) => OnVerifyHookReturn;
+  /**
+   * onValidation async hook.
+   * 
+   * called after token check. for you to validate the token.
+   * @param {string} token
+   * @return string | undefined | null
+   */
+  onValidation?: validationFunction
+}
 
-  /** auto set cookie flag */
-  private autoSetCookie: boolean;
+export class Satpam {
 
-  constructor(opt: SatpamOptions = {}) {
-    this.name = opt.name ?? 'satpam';
-    this.urlCheck = opt.urlCheck ?? '';
-    this.autoSetCookie = opt.autoSetCookie ?? true;
-    this.session = { status: false, token: '' };
+  /** found token */
+  private _token: string;
+
+  /** identifier for satpam instance */
+  private _prefix: string;
+
+  /** cookie name */
+  private _name: string;
+
+  private _cookieOptions: CookieSerializeOptions
+
+  private _validationHook: validationFunction
+
+  /**
+   * 
+   * @param prefix cookie prefix
+   * @param options stapam options
+   */
+  constructor(prefix: string, options: SatpamOptions = {}) {
+    this._prefix = prefix
+    this._name = options.name ?? 'satpam'
+    this._cookieOptions = options.cookieOptions ?? {}
+    this._validationHook = options.onValidation ?? null
+  }
+
+  /** cookie max age setter */
+  public set maxAge(value: number) {
+    this._cookieOptions.maxAge = value
+  }
+
+  /** cookie expired date setter */
+  public set expires(value: Date) {
+    this._cookieOptions.expires = value
+  }
+
+  /** cookie options setter */
+  public set httpOnly(value: boolean) {
+    this._cookieOptions.httpOnly = value
+  }
+  
+  /** cookie options setter */
+  public set priority(value: 'low' | 'medium' | 'high') {
+    this._cookieOptions.priority = value
+  }
+  
+  /** cookie options setter */
+  public set sameSite(value: true | false | 'lax' | 'strict' | 'none') {
+    this._cookieOptions.sameSite = value
+  }
+  
+  /** cookie options setter */
+  public set secure(value: boolean) {
+    this._cookieOptions.secure = value
+  }
+
+  /** full cookie name getter */
+  public get cookieName(): string {
+    return [this._prefix, this._name].join('.')
+  }
+
+  /** cookie name getter */
+  public get name(): string {
+    return this._name
+  }
+
+  /**
+   * session getter
+   * @type { status: boolean, token: string, serialized: string }
+   */
+  public get session(): SatpamSession {
+    return {
+      token: this._token,
+      status: this._token ? true:false,
+      serialized: this._serializeToken()
+    }
+  }
+
+  /** serializing current token */
+  private _serializeToken(): string {
+    if (!this._token) return ''
+    return serializeCookie(this.cookieName, this._token, this._cookieOptions)
+  }
+
+  /**
+   * utility for processing token to session
+   *
+   * @private
+   * @param {string} token
+   * @return {*}  {Promise<SatpamSession>}
+   * @memberof Satpam
+   */
+  private async _processToken(token: string): Promise<SatpamSession> {
+    if (typeof this._validationHook === 'function') {
+      token = await this._validationHook(token) ?? ''
+    }
+
+    if (token) {
+      this._token = token
+      return { 
+        token, 
+        status: true, 
+        serialized: this._serializeToken()
+      }
+    }
+
+    return { status: false, serialized: '', token }
+  }
+
+  /**
+   * Satpam scaning cookie string for token
+   *
+   * @param {string} cookies
+   * @param {validationFunction} [onValidation=null]
+   * @return {*}  {Promise<SatpamSession>}
+   * @memberof Satpam
+   */
+  public async onCookies(
+    cookies: string,
+    onValidation: validationFunction = null
+  ): Promise<SatpamSession> {
+
+    /** parsing cookies */
+    const parsed = parseCookies(cookies)
+    let token = parsed[this.cookieName]
+
+    if (typeof onValidation === 'function') {
+      token = await onValidation(token) ?? ''
+    }
+
+    return this._processToken(token)
+  }
+
+  /**
+   * Satpam checking headers for token
+   *
+   * @param {string} name
+   * @param {(object)} headers
+   * @param {validationFunction} [onValidation=null]
+   * @return {*}  {Promise<SatpamSession>}
+   * @memberof Satpam
+   */
+  public async onHeaders(
+    name: string,
+    headers: object | Headers,
+    onValidation: validationFunction = null
+  ): Promise<SatpamSession> {
+
+    // if headers name is cookie.. lol
+    if (name.includes('cookie')) {
+      return await this.onCookies(headers[name])
+    }
+
+    let token: string = ''
+
+    // check if headers instanceof Headers / fetch.Headers
+    if (typeof headers['has'] === 'function') {
+      if (headers['has'](name)) token = headers['get'](name)
+    }
+
+    if (headers[name]) {
+      token = headers[name]
+    }
+
+    if (typeof onValidation === 'function') {
+      token = await onValidation(token) ?? ''
+    }
+
+    return this._processToken(token)
+  }
+
+  /**
+   * Satpam parse and checking url for token
+   *
+   * @param {string} name
+   * @param {(string | URL)} url
+   * @param {validationFunction} [onValidation=null]
+   * @return {*}  {Promise<SatpamSession>}
+   * @memberof Satpam
+   */
+  public async onUrl(
+    name: string,
+    url: string | URL,
+    onValidation: validationFunction = null
+  ): Promise<SatpamSession> {
+    
+    let token: string = ''
+
+    /** check on url string */
+    if (typeof url === 'string') {
+
+      // check on url queries
+      if (url.includes('?')) {
+        const [_, queries] = url.split('?');
+        if (queries !== '') {
+          token = this._urlParamCheck(queries, name) ?? ''
+        }
+      }
+
+      // check on url hash
+      if (url.includes('#')) {
+        const [_, queries] = url.split('#');
+        if (queries !== '') {
+          token = this._urlParamCheck(queries, name) ?? ''
+        }
+      }
+    }
+
+    /** check on url as URL instance */
+    if (url instanceof URL) {
+      const queries = url.searchParams;
+      if (queries.has(name)) {
+        token = queries[name] ?? ''
+      }
+
+      const hash = url.hash;
+      if (hash !== '') {
+        token = this._urlParamCheck(hash, name) ?? ''
+      }
+    }
+
+    if (typeof onValidation === 'function') {
+      token = await onValidation(token) ?? ''
+    }
+
+    return this._processToken(token)
   }
 
   /**
@@ -70,180 +287,5 @@ export class Satpam {
     }
 
     return ''
-  }
-
-  private async _processToken(token: string): Promise<SatpamSession> {
-    if (token === '') {
-      if (typeof this.hook === 'function') {
-        // get result from hook
-        const result = await this.hook(token);
-
-        // on result type string
-        if (typeof result === 'string' && result !== '') {
-          this.token = result;
-          if (this.autoSetCookie) {
-            this.setSession(this.token);
-            return this.session;
-          } else {
-            this.session = { status: true, token: this.token };
-            return this.session;
-          }
-        }
-      }
-
-      this.session = { status: false, token: '' };
-      return this.session;
-    }
-
-    if (typeof this.hook === 'function') {
-      const result = await this.hook(token);
-      if (result) token = result;
-    }
-
-    this.token = token;
-    if (this.autoSetCookie) {
-      this.setSession(this.token);
-      return this.session;
-    } else {
-      this.session = { status: true, token: this.token };
-      return this.session;
-    }
-  }
-
-  private _cookie(cookies: string): string {
-    const parsed = parseCookies(cookies)
-    if (parsed[this.name]) {
-      return parsed[this.name]
-    }
-
-    return ''
-  }
-
-  private _url(url: string | URL, key: string = null): string {
-
-    // query / hash parameter key
-    key = key ?? this.urlCheck ?? 'access_token'
-
-    /** check on url string */
-    if (typeof url === 'string') {
-
-      // check on url queries
-      if (url.includes('?')) {
-        const [_, queries] = url.split('?');
-        if (queries !== '') {
-          return this._urlParamCheck(queries, key);
-        }
-      }
-
-      // check on url hash
-      if (url.includes('#')) {
-        const [_, queries] = url.split('#');
-        if (queries !== '') {
-          return this._urlParamCheck(queries, key);
-        }
-      }
-    }
-
-    /** check on url as URL instance */
-    if (url instanceof URL) {
-      const queries = url.searchParams;
-      if (queries.has(key)) {
-        return queries[key];
-      }
-
-      const hash = url.hash;
-      if (hash !== '') {
-        return this._urlParamCheck(hash, key);
-      }
-    }
-
-    return ''
-  }
-
-  // TODO:
-  // bikin dua function untuk cek token
-  // - async node(req, res, hook) => auto set pakai res
-  // - async browser(hook) => auto set pakai window
-
-  /**
-   * Verify jwt token exist
-   *
-   * @param {OnVerifyHook} Hook on token found
-   * @return {SatpamVerifyReturn} status, token
-   * @memberof Satpam
-   */
-  public async verify(
-    req: { headers: object | Headers; url: string | URL },
-    hook: (token: string) => OnVerifyHookReturn = null
-  ): Promise<SatpamSession> {
-
-    // set hook function
-    this.hook = hook;
-
-    /** check on cookie */
-    const cookie = this._cookie(req.headers['cookie'])
-    if (cookie) return this._processToken(cookie)
-
-    /** return on url check empty */
-    if (this.urlCheck === '' || !req.url) return this._processToken('');
-
-    /** check on url */
-    const url = this._url(req.url, this.urlCheck)
-    if (url) return this._processToken(url)
-
-    return await this._processToken('');
-  }
-
-  /**
-   * set session by adding token to response cookie header
-   *
-   * @param {string} [token=""]
-   * @param {CookieSerializeOptions} [opt={}]
-   * @return {string} string formated cookie
-   * @memberof Satpam
-   */
-  public setSession(token: string = '', opt: CookieSerializeOptions = {}): string {
-    /** return on token empty */
-    token = token ?? this.token;
-    if (!token) return;
-
-    const cookieString = serializeCookie(this.name ?? 'satpam', token, opt);
-    this.session = { status: true, token: this.token };
-
-    const headers = this.response.headers;
-    if (typeof headers === 'object') {
-      if (Object.keys(headers).length === 0) {
-        this.response.headers['Set-Cookie'] = cookieString;
-        return cookieString;
-      }
-
-      if (this.response.headers instanceof Headers) {
-        this.response.headers.set('Set-Cookie', cookieString);
-        return cookieString;
-      }
-
-      if (typeof headers['setHeader'] === 'function') {
-        this.response.headers['setHeader']('Set-Cookie', cookieString);
-        return cookieString;
-      }
-    }
-
-    // if on client side
-    if ('window' in globalThis) {
-      window.document.cookie = cookieString;
-      return cookieString;
-    }
-
-    return cookieString;
-  }
-
-  /**
-   * return current session
-   *
-   * @return {SatpamSession} session
-   * @memberof Satpam
-   */
-  public getSession() {
-    return this.session;
   }
 }

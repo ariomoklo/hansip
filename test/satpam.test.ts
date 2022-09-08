@@ -1,49 +1,114 @@
-import { expect, it, test } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import MockReq from 'mock-req';
-import MockRes from 'mock-res';
-import { Satpam } from "./../src/index";
+import { Satpam, SatpamSession } from "./../src/index";
 
-const noToken = {
+const noTokenRequest = new MockReq({
     method: 'GET',
     url: 'http://localhost:8000/'
-}
-
-const withToken = {
-    method: 'GET',
-    url: 'http://localhost:8000/',
-    headers: {
-		'Set-Cookie': 'satpam=jwt.token; any=any;'
-	},
-}
-
-test('Satpam verify has no token', async () => {
-    const request = new MockReq(noToken)
-    const response = new MockRes()
-
-    const satpam = new Satpam(request, response)
-    const { status, token } = await satpam.verify()
-
-    it ('has status false', () => {
-        expect(status).toBeFalsy()
-    })
-
-    it ('has empty string token', () => {
-        expect(token).toEqual('')
-    })
 })
 
-test('Satpam verify has token on cookie', async () => {
-    const request = new MockReq(withToken)
-    const response = new MockRes()
+const withTokenRequest = new MockReq({
+    method: 'GET',
+    url: 'http://localhost:8000/?access_token=jwt.token',
+    headers: {
+        'Authorization': 'Bearer jwt.token',
+		'Cookie': 'satpam=jwt.token; any=any;'
+	},
+})
 
-    const satpam = new Satpam(request, response)
-    const { status, token } = await satpam.verify()
-
+function sessionWithTokenCheck(session: SatpamSession) {
     it ('has status true', () => {
-        expect(status).toBeTruthy()
+        expect(session.status).toBeTruthy()
     })
 
     it ('has token string \"jwt.token\"', () => {
-        expect(token).toEqual('jwt.token')
+        expect(session.token).toEqual('jwt.token')
+    })
+
+    it ('serialized has test.satpam=jwt.token', () => {
+        expect(session.serialized).toContain('test.satpam=jwt.token;')
+    })
+}
+
+function sessionNoTokenCheck(session: SatpamSession) {
+    it ('has status false', () => {
+        expect(session.status).toBeFalsy()
+    })
+
+    it ('has empty string token', () => {
+        expect(session.token).toEqual('')
+    })
+}
+
+describe('Satpam on Cookie', () => {
+    test('Satpam on cookie test has no token', async () => {
+        const satpam = new Satpam("test")
+        const session = await satpam.onCookies(noTokenRequest.headers['cookie'])
+    
+        sessionNoTokenCheck(session)
+    })
+    
+    test('Satpam on cookie with token', async () => {
+        const satpam = new Satpam("test")
+        const session = await satpam.onCookies(withTokenRequest.headers['cookie'])
+    
+        sessionWithTokenCheck(session)
+    })
+})
+ 
+describe('Satpam on URL', () => {
+    test('Satpam on url with no token', async () => {
+        const satpam = new Satpam("test")
+        const session = await satpam.onUrl('access_token', noTokenRequest.url)
+    
+        sessionNoTokenCheck(session)
+    })
+
+    test('Satpam on url with token', async () => {
+        const satpam = new Satpam("test")
+        const session = await satpam.onUrl('access_token', withTokenRequest.url)
+    
+        sessionWithTokenCheck(session)
+    })
+})
+
+describe('Satpam on Headers', () => {
+    test('Satpam on headers with no token', async () => {
+        const satpam = new Satpam("test")
+        const session = await satpam.onHeaders('Authorization', noTokenRequest.headers, token => token.replace('Bearer ', ''))
+    
+        sessionNoTokenCheck(session)
+    })
+    
+    test('Satpam on headers with token', async () => {
+        const satpam = new Satpam("test")
+        const session = await satpam.onUrl('Authorization', withTokenRequest.headers, token => token.replace('Bearer ', ''))
+    
+        sessionWithTokenCheck(session)
+    })
+
+    test('Satpam on headers but cookie', async () => {
+        const satpam = new Satpam("test")
+        const session = await satpam.onUrl('cookie', withTokenRequest.headers)
+    
+        sessionWithTokenCheck(session)
+    })
+})
+
+describe('Global validation function', () => {
+    test('Change token on global validation', async () => {
+        const satpam = new Satpam("test", {
+            onValidation: () => "global.hook.token",
+            name: 'testing'
+        })
+
+        const session = await satpam.onCookies(withTokenRequest.headers['cookie'])
+        it ('has cookie name test.testing', () => {
+            expect(satpam.cookieName).toEqual('test.testing')
+        })
+
+        it ('has token string \"global.hook.token\"', () => {
+            expect(session.token).toEqual('global.hook.token')
+        })
     })
 })
