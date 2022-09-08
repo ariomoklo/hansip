@@ -7,40 +7,37 @@ export type OnValidationReturn = string | undefined | null;
 export type validationFunction = (token: string) => OnValidationReturn | Promise<OnValidationReturn>;
 
 export type SatpamSession = {
-
   /** current session status */
-  status: boolean
+  status: boolean;
 
   /** raw token */
-  token: string
+  token: string;
 
   /** cookie serialized token */
-  serialized: string
+  serialized: string;
 };
 
 export type SatpamOptions = {
-
   /** cookie name */
-  name?: string
+  name?: string;
 
   /**
    * cookie options for cookie npm lib
    * @link https://www.npmjs.com/package/cookie
    */
-  cookieOptions?: CookieSerializeOptions
+  cookieOptions?: CookieSerializeOptions;
 
   /**
    * onValidation async hook.
-   * 
+   *
    * called after token check. for you to validate the token.
    * @param {string} token
    * @return string | undefined | null
    */
-  onValidation?: validationFunction
-}
+  onValidation?: validationFunction;
+};
 
 export class Satpam {
-
   /** found token */
   private _token: string;
 
@@ -50,60 +47,60 @@ export class Satpam {
   /** cookie name */
   private _name: string;
 
-  private _cookieOptions: CookieSerializeOptions
+  private _cookieOptions: CookieSerializeOptions;
 
-  private _validationHook: validationFunction
+  private _validationHook: validationFunction;
 
   /**
-   * 
+   *
    * @param prefix cookie prefix
    * @param options stapam options
    */
   constructor(prefix: string, options: SatpamOptions = {}) {
-    this._prefix = prefix
-    this._name = options.name ?? 'satpam'
-    this._cookieOptions = options.cookieOptions ?? {}
-    this._validationHook = options.onValidation ?? null
+    this._prefix = prefix;
+    this._name = options.name ?? 'satpam';
+    this._cookieOptions = options.cookieOptions ?? {};
+    this._validationHook = options.onValidation ?? null;
   }
 
   /** cookie max age setter */
   public set maxAge(value: number) {
-    this._cookieOptions.maxAge = value
+    this._cookieOptions.maxAge = value;
   }
 
   /** cookie expired date setter */
   public set expires(value: Date) {
-    this._cookieOptions.expires = value
+    this._cookieOptions.expires = value;
   }
 
   /** cookie options setter */
   public set httpOnly(value: boolean) {
-    this._cookieOptions.httpOnly = value
+    this._cookieOptions.httpOnly = value;
   }
-  
+
   /** cookie options setter */
   public set priority(value: 'low' | 'medium' | 'high') {
-    this._cookieOptions.priority = value
+    this._cookieOptions.priority = value;
   }
-  
+
   /** cookie options setter */
   public set sameSite(value: true | false | 'lax' | 'strict' | 'none') {
-    this._cookieOptions.sameSite = value
+    this._cookieOptions.sameSite = value;
   }
-  
+
   /** cookie options setter */
   public set secure(value: boolean) {
-    this._cookieOptions.secure = value
+    this._cookieOptions.secure = value;
   }
 
   /** full cookie name getter */
   public get cookieName(): string {
-    return [this._prefix, this._name].join('.')
+    return [this._prefix, this._name].join('.');
   }
 
   /** cookie name getter */
   public get name(): string {
-    return this._name
+    return this._name;
   }
 
   /**
@@ -113,15 +110,15 @@ export class Satpam {
   public get session(): SatpamSession {
     return {
       token: this._token,
-      status: this._token ? true:false,
-      serialized: this._serializeToken()
-    }
+      status: this._token ? true : false,
+      serialized: this._serializeToken(),
+    };
   }
 
   /** serializing current token */
   private _serializeToken(): string {
-    if (!this._token) return ''
-    return serializeCookie(this.cookieName, this._token, this._cookieOptions)
+    if (!this._token) return '';
+    return serializeCookie(this.cookieName, this._token, this._cookieOptions);
   }
 
   /**
@@ -134,19 +131,19 @@ export class Satpam {
    */
   private async _processToken(token: string): Promise<SatpamSession> {
     if (typeof this._validationHook === 'function') {
-      token = await this._validationHook(token) ?? ''
+      token = (await this._validationHook(token)) ?? '';
     }
 
     if (token) {
-      this._token = token
-      return { 
-        token, 
-        status: true, 
-        serialized: this._serializeToken()
-      }
+      this._token = token;
+      return {
+        token,
+        status: true,
+        serialized: this._serializeToken(),
+      };
     }
 
-    return { status: false, serialized: '', token }
+    return { status: false, serialized: '', token };
   }
 
   /**
@@ -157,20 +154,16 @@ export class Satpam {
    * @return {*}  {Promise<SatpamSession>}
    * @memberof Satpam
    */
-  public async onCookies(
-    cookies: string,
-    onValidation: validationFunction = null
-  ): Promise<SatpamSession> {
-
+  public async onCookies(cookies: string, onValidation: validationFunction = null): Promise<SatpamSession> {
     /** parsing cookies */
-    const parsed = parseCookies(cookies)
-    let token = parsed[this.cookieName]
+    const parsed = parseCookies(cookies);
+    let token = parsed[this.cookieName];
 
     if (typeof onValidation === 'function') {
-      token = await onValidation(token) ?? ''
+      token = (await onValidation(token)) ?? '';
     }
 
-    return this._processToken(token)
+    return this._processToken(token);
   }
 
   /**
@@ -185,30 +178,29 @@ export class Satpam {
   public async onHeaders(
     name: string,
     headers: object | Headers,
-    onValidation: validationFunction = null
+    onValidation: validationFunction = null,
   ): Promise<SatpamSession> {
-
     // if headers name is cookie.. lol
     if (name.includes('cookie')) {
-      return await this.onCookies(headers[name])
+      return await this.onCookies(headers[name]);
     }
 
-    let token: string = ''
+    let token: string = '';
 
     // check if headers instanceof Headers / fetch.Headers
     if (typeof headers['has'] === 'function') {
-      if (headers['has'](name)) token = headers['get'](name)
+      if (headers['has'](name)) token = headers['get'](name);
     }
 
     if (headers[name]) {
-      token = headers[name]
+      token = headers[name];
     }
 
     if (typeof onValidation === 'function') {
-      token = await onValidation(token) ?? ''
+      token = (await onValidation(token)) ?? '';
     }
 
-    return this._processToken(token)
+    return this._processToken(token);
   }
 
   /**
@@ -220,21 +212,15 @@ export class Satpam {
    * @return {*}  {Promise<SatpamSession>}
    * @memberof Satpam
    */
-  public async onUrl(
-    name: string,
-    url: string | URL,
-    onValidation: validationFunction = null
-  ): Promise<SatpamSession> {
-    
-    let token: string = ''
+  public async onUrl(name: string, url: string | URL, onValidation: validationFunction = null): Promise<SatpamSession> {
+    let token: string = '';
 
     if (typeof url === 'string') {
-
       // check on url queries
       if (url.includes('?')) {
         const [_, queries] = url.split('?');
         if (queries !== '') {
-          token = this._urlParamCheck(queries, name) ?? ''
+          token = this._urlParamCheck(queries, name) ?? '';
         }
       }
 
@@ -242,27 +228,26 @@ export class Satpam {
       if (url.includes('#')) {
         const [_, queries] = url.split('#');
         if (queries !== '') {
-          token = this._urlParamCheck(queries, name) ?? ''
+          token = this._urlParamCheck(queries, name) ?? '';
         }
       }
-
     } else if (url instanceof URL) {
       const queries = url.searchParams;
       if (queries.has(name)) {
-        token = queries.get(name) ?? ''
+        token = queries.get(name) ?? '';
       } else {
         const hash = url.hash;
         if (hash !== '') {
-          token = this._urlParamCheck(hash, name) ?? ''
+          token = this._urlParamCheck(hash, name) ?? '';
         }
       }
     }
 
     if (typeof onValidation === 'function') {
-      token = await onValidation(token) ?? ''
+      token = (await onValidation(token)) ?? '';
     }
 
-    return this._processToken(token)
+    return this._processToken(token);
   }
 
   /**
@@ -280,9 +265,9 @@ export class Satpam {
       .reduce((acc, val) => ((acc[val[0]] = val[1]), acc), {});
 
     if (parsed[key]) {
-      return parsed[key]
+      return parsed[key];
     }
 
-    return ''
+    return '';
   }
 }
