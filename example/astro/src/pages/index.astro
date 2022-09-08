@@ -3,25 +3,45 @@ import Layout from '../layouts/Layout.astro';
 import Card from '../components/Card.astro';
 import { Satpam } from "./../../../../src/satpam";
 
-const satpam = new Satpam({
-	name: 'satpam_astro',
-	urlCheck: 'access_token',
-	autoSetCookie: true
+const satpam = new Satpam("example", {
+	onValidation: (token: string) => {
+		/**
+		 * This is validation hook
+		 * you can do token validation here.
+		 * 
+		 * you can return new token here if you want:
+		 * token = 'new token'
+		 * return token
+		 */
+
+		console.log('isi token di hook:', token)
+
+		/** do token validation */
+		if (token !== "jwt.token") { 
+			return null
+		}
+
+		return token
+	}
 })
 
-const { status } = await satpam.verify(Astro.request)
+const cookies = Astro.request.headers.get('cookie') ?? ''
 
-if (!status) {
-	Astro.redirect('/login')
+// check on cookie then check on url for access_token
+await satpam.onCookies(cookies)
+await satpam.onUrl('access_token', Astro.url)
+
+const session = satpam.session
+console.log('url isinya:', Astro.url)
+console.log("hasil session:", session)
+
+/** redirect on login */
+if (!session.status) {
+  return Astro.redirect('/login')
 }
 
-/**
- * TODO:
- * - bikin remove session
- * - test bikin login di astro
- * - test dengan jwt_decode / jose / supabase
- */
-
+/** set cookie to response */
+Astro.response.headers.set('Set-Cookie', session.serialized)
 ---
 
 <Layout title="Welcome to Astro.">
