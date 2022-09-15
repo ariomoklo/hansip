@@ -2,8 +2,8 @@ import { CookieSerializeOptions } from 'cookie';
 import { parseCookies, serializeCookie } from './utility';
 
 export type OnValidationData = {
-  token: string | null | undefined,
-  refresh: string | null | undefined
+  token: string | null | undefined;
+  refresh: string | null | undefined;
 };
 
 /** Hook for validating token */
@@ -81,8 +81,8 @@ export class Satpam {
     this._validationHook = options.onValidation ?? null;
 
     // set default
-    this._token = ''
-    this._refreshToken = ''
+    this._token = '';
+    this._refreshToken = '';
   }
 
   /** cookie max age setter */
@@ -139,15 +139,15 @@ export class Satpam {
       token: this._token,
       status: this._token ? true : false,
       serialized: this._serializeToken(),
-      refresh: this.refresh ?? undefined
+      refresh: this.refresh ?? undefined,
     };
   }
 
-  public get refresh(): { token: string, serialized: string } {
+  public get refresh(): { token: string; serialized: string } {
     return {
       token: this._refreshToken,
-      serialized: this._refreshToken ? serializeCookie(this._refreshName, this._refreshToken, this._cookieOptions) : ''
-    }
+      serialized: this._refreshToken ? serializeCookie(this._refreshName, this._refreshToken, this._cookieOptions) : '',
+    };
   }
 
   /** serializing current token */
@@ -158,11 +158,11 @@ export class Satpam {
 
   private async _runHook(hook: validationFunction, token: string, refresh: string = '') {
     if (typeof hook === 'function') {
-      const result = await hook({ token, refresh })
-      return result
+      const result = await hook({ token, refresh });
+      return result;
     }
 
-    return { token, refresh }
+    return { token, refresh };
   }
 
   /**
@@ -174,7 +174,7 @@ export class Satpam {
    * @memberof Satpam
    */
   private async _processToken(token: string, refresh: string = ''): Promise<SatpamSession> {
-    const result = await this._runHook(this._validationHook, token, refresh)
+    const result = await this._runHook(this._validationHook, token, refresh);
 
     // set refresh if exist
     if (result.refresh) this._refreshToken = result.refresh;
@@ -182,7 +182,7 @@ export class Satpam {
     // set token if exist
     if (result.token) this._token = result.token;
 
-    return this.session
+    return this.session;
   }
 
   /**
@@ -220,7 +220,7 @@ export class Satpam {
     let token = parsed[this.cookieName] ?? this._token;
     let refresh = parsed[this.refreshCookie] ?? this._refreshToken;
 
-    const result = await this._runHook(onValidation, token, refresh)
+    const result = await this._runHook(onValidation, token, refresh);
     return this._processToken(result.token, result.refresh);
   }
 
@@ -238,7 +238,7 @@ export class Satpam {
     name: string,
     headers: object | Headers,
     onValidation: validationFunction = null,
-    asRefresh: boolean = false
+    asRefresh: boolean = false,
   ): Promise<SatpamSession> {
     // if headers name is cookie.. lol
     if (name.includes('cookie')) {
@@ -258,11 +258,11 @@ export class Satpam {
     }
 
     if (asRefresh) {
-      refresh = token
-      token = this._token
+      refresh = token;
+      token = this._token;
     }
 
-    const result = await this._runHook(onValidation, token, refresh)
+    const result = await this._runHook(onValidation, token, refresh);
     return this._processToken(result.token, result.refresh);
   }
 
@@ -276,7 +276,12 @@ export class Satpam {
    * @return {*}  {Promise<SatpamSession>}
    * @memberof Satpam
    */
-  public async onUrl(name: string, url: string | URL, onValidation: validationFunction = null, asRefresh: boolean = false): Promise<SatpamSession> {
+  public async onUrl(
+    name: string,
+    url: string | URL,
+    onValidation: validationFunction = null,
+    asRefresh: boolean = false,
+  ): Promise<SatpamSession> {
     let token: string = this._token;
     let refresh: string = this._refreshToken;
 
@@ -309,11 +314,11 @@ export class Satpam {
     }
 
     if (asRefresh) {
-      refresh = token
-      token = this._token
+      refresh = token;
+      token = this._token;
     }
 
-    const result = await this._runHook(onValidation, token, refresh)
+    const result = await this._runHook(onValidation, token, refresh);
     return this._processToken(result.token, result.refresh);
   }
 }
