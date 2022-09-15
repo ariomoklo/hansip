@@ -12,7 +12,7 @@ const withTokenRequest = new MockReq({
     url: 'http://localhost:8000/?access_token=jwt.token',
     headers: {
         'Authorization': 'Bearer jwt.token',
-		'Cookie': 'satpam=jwt.token; any=any;'
+		'Cookie': 'test.satpam=jwt.token; test.refresh=jwt.refresh;'
 	},
 })
 
@@ -75,21 +75,33 @@ describe('Satpam on URL', () => {
 describe('Satpam on Headers', () => {
     test('Satpam on headers with no token', async () => {
         const satpam = new Satpam("test")
-        const session = await satpam.onHeaders('Authorization', noTokenRequest.headers, token => token.replace('Bearer ', ''))
+        const session = await satpam.onHeaders(
+            'Authorization', 
+            noTokenRequest.headers, 
+            ({ token, refresh }) => ({
+                token: token?.replace('Bearer ', '') ?? '',
+                refresh
+            }))
     
         sessionNoTokenCheck(session)
     })
     
     test('Satpam on headers with token', async () => {
         const satpam = new Satpam("test")
-        const session = await satpam.onUrl('Authorization', withTokenRequest.headers, token => token.replace('Bearer ', ''))
+        const session = await satpam.onHeaders(
+            'Authorization', 
+            withTokenRequest.headers, 
+            ({ token, refresh }) => ({
+                token: token?.replace('Bearer ', '') ?? '',
+                refresh
+            }))
     
         sessionWithTokenCheck(session)
     })
 
     test('Satpam on headers but cookie', async () => {
         const satpam = new Satpam("test")
-        const session = await satpam.onUrl('cookie', withTokenRequest.headers)
+        const session = await satpam.onHeaders('cookie', withTokenRequest.headers)
     
         sessionWithTokenCheck(session)
     })
@@ -98,7 +110,7 @@ describe('Satpam on Headers', () => {
 describe('Global validation function', () => {
     test('Change token on global validation', async () => {
         const satpam = new Satpam("test", {
-            onValidation: () => "global.hook.token",
+            onValidation: () => ({ token: "global.hook.token", refresh: "global.hook.refresh" }),
             name: 'testing'
         })
 
@@ -110,5 +122,17 @@ describe('Global validation function', () => {
         it ('has token string \"global.hook.token\"', () => {
             expect(session.token).toEqual('global.hook.token')
         })
+
+        it ('has cookie name test.testing', () => {
+            expect(satpam.refreshCookie).toEqual('test.refresh')
+        })
+
+        it ('has token string \"global.hook.token\"', () => {
+            expect(session.refresh?.token).toEqual('global.hook.refresh')
+        })
     })
 })
+
+// describe('With Refresh Token', () => {
+
+// })

@@ -2,12 +2,12 @@ import { CookieSerializeOptions } from 'cookie';
 import { parseCookies, serializeCookie } from './utility';
 
 export type OnValidationData = {
-  token?: string,
-  refresh?: string
-} | null | undefined;
+  token: string | null | undefined,
+  refresh: string | null | undefined
+};
 
 /** Hook for validating token */
-export type validationFunction = (token: OnValidationData) => OnValidationData | Promise<OnValidationData>;
+export type validationFunction = (data: OnValidationData) => OnValidationData | Promise<OnValidationData>;
 
 export type SatpamSession = {
   /** current session status */
@@ -316,7 +316,4 @@ export class Satpam {
     const result = await this._runHook(onValidation, token, refresh)
     return this._processToken(result.token, result.refresh);
   }
-
-  // TODO:
-  // test with refresh token
 }
