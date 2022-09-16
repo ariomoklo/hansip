@@ -217,8 +217,8 @@ export class Satpam {
   public async onCookies(cookies: string, onValidation: validationFunction = null): Promise<SatpamSession> {
     /** parsing cookies */
     const parsed = parseCookies(cookies);
-    let token = parsed[this.cookieName] ?? this._token;
-    let refresh = parsed[this.refreshCookie] ?? this._refreshToken;
+    const token = parsed[this.cookieName] ?? this._token;
+    const refresh = parsed[this.refreshCookie] ?? this._refreshToken;
 
     const result = await this._runHook(onValidation, token, refresh);
     return this._processToken(result.token, result.refresh);
