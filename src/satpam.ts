@@ -28,10 +28,16 @@ export type SatpamSession = {
 
 export type SatpamOptions = {
   /** cookie name */
-  name?: string;
+  name: string;
 
   /** refresh token name */
   refresh?: string;
+
+  /** path to login page. default to '/login' */
+  loginPath: string;
+
+  /** path to home page. default to '/home' */
+  homePath: string;
 
   /**
    * cookie options for cookie npm lib
@@ -49,6 +55,12 @@ export type SatpamOptions = {
   onValidation?: validationFunction;
 };
 
+export const SatpamOptionsDefault: SatpamOptions = {
+  name: 'satpam',
+  loginPath: '/login',
+  homePath: '/home'
+}
+
 export class Satpam {
   /** found token */
   private _token: string;
@@ -64,6 +76,12 @@ export class Satpam {
 
   private _refreshName: string;
 
+  private _loginPath: string;
+
+  private _homePath: string;
+
+  private _currentURL: URL;
+
   private _cookieOptions: CookieSerializeOptions;
 
   private _validationHook: validationFunction;
@@ -73,9 +91,9 @@ export class Satpam {
    * @param prefix cookie prefix
    * @param options stapam options
    */
-  constructor(prefix: string, options: SatpamOptions = {}) {
+  constructor(prefix: string, options: SatpamOptions = SatpamOptionsDefault) {
     this._prefix = prefix;
-    this._name = options.name ?? 'satpam';
+    this._name = options.name;
     this._refreshName = options.refresh ?? 'refresh';
     this._cookieOptions = options.cookieOptions ?? {};
     this._validationHook = options.onValidation ?? null;
@@ -83,6 +101,8 @@ export class Satpam {
     // set default
     this._token = '';
     this._refreshToken = '';
+    this._loginPath = options.loginPath;
+    this._homePath = options.homePath ?? null;
   }
 
   /** cookie max age setter */
@@ -115,6 +135,16 @@ export class Satpam {
     this._cookieOptions.secure = value;
   }
 
+  /** token setter */
+  public set token(value: string) {
+    this._token = value
+  }
+
+  /** refresh token setter */
+  public set refreshToken(value: string) {
+    this._refreshToken = value
+  }
+
   /** full cookie name getter */
   public get cookieName(): string {
     return [this._prefix, this._name].join('.');
@@ -143,6 +173,10 @@ export class Satpam {
     };
   }
 
+  /** 
+   * refresh token getter
+   * @type { token: string, serialized: string }
+   */
   public get refresh(): { token: string; serialized: string } {
     return {
       token: this._refreshToken,
@@ -320,5 +354,38 @@ export class Satpam {
 
     const result = await this._runHook(onValidation, token, refresh);
     return this._processToken(result.token, result.refresh);
+  }
+
+  /**
+   * check current url and session to determine access and redirecting page.
+   *
+   * @param {URL} current
+   * @param {("public" | "private")} [type="private"]
+   * @memberof Satpam
+   */
+  public pageGuard(current: URL, type: "public" | "private" = "private") {
+    /** if page is public, return access to true */
+    if (type === "public") return { access: true, redirect: null }
+
+    const login = new URL(this._loginPath, current.origin)
+    const home = new URL(this._homePath, current.origin)
+
+    /** check for session empty */
+    if (!this.session.status) {
+
+      /** session empty, but not on login page. */
+      if (login.href !== this._currentURL.href) {
+        return { access: false, redirect: login }
+      }
+    } else {
+
+      /** session is exist, but on login page */
+      if (this._currentURL.href === login.href) {
+        return { access: true, redirect: home }
+      }
+    }
+
+    /** return on session exist and have access */
+    return { access: true, redirect: null }
   }
 }
