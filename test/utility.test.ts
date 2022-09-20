@@ -1,19 +1,19 @@
-import { expect, it, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import { parseCookies, serializeCookie } from "./../src/utility"
 
-test('parseCookie utility test return object', () => {
+describe('parseCookie utility test return object', () => {
     const cookies = parseCookies('satpam=jwt.token; crsf=any;')
 
-    it ('return type is object', () => {
+    test ('return type is object', () => {
         expect(cookies).toBeTypeOf('object')
     })
 
-    it ('has property of satpam', () => {
+    test ('has property of satpam', () => {
         expect(cookies).toHaveProperty('satpam')
     })
 })
 
-test('serializeCookie utility test return cookie format', () => {
+describe('serializeCookie utility test return cookie format', () => {
     
     const cookie = serializeCookie('satpam', 'jwt.token', { 
         path: '/',
@@ -25,11 +25,11 @@ test('serializeCookie utility test return cookie format', () => {
 
     const cookies = parseCookies(cookie)
 
-    it ('return type is a string', () => {
+    test ('return type is a string', () => {
         expect(cookie).toBeTypeOf('string')
     })
 
-    it ('has property of satpam', () => {
+    test ('has property of satpam', () => {
         expect(cookies).toHaveProperty('satpam')
     })
 })

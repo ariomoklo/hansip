@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import MockReq from 'mock-req';
 import { Satpam, SatpamSession } from "./../src/index";
 
@@ -17,25 +17,25 @@ const withTokenRequest = new MockReq({
 })
 
 function sessionWithTokenCheck(session: SatpamSession) {
-    it ('has status true', () => {
+    test ('has status true', () => {
         expect(session.status).toBeTruthy()
     })
 
-    it ('has token string \"jwt.token\"', () => {
+    test ('has token string \"jwt.token\"', () => {
         expect(session.token).toEqual('jwt.token')
     })
 
-    it ('serialized has test.satpam=jwt.token', () => {
+    test ('serialized has test.satpam=jwt.token', () => {
         expect(session.serialized).toContain('test.satpam=jwt.token;')
     })
 }
 
 function sessionNoTokenCheck(session: SatpamSession) {
-    it ('has status false', () => {
+    test ('has status false', () => {
         expect(session.status).toBeFalsy()
     })
 
-    it ('has empty string token', () => {
+    test ('has empty string token', () => {
         expect(session.token).toEqual('')
     })
 }
@@ -111,28 +111,26 @@ describe('Global validation function', () => {
     test('Change token on global validation', async () => {
         const satpam = new Satpam("test", {
             onValidation: () => ({ token: "global.hook.token", refresh: "global.hook.refresh" }),
-            name: 'testing'
+            name: 'testing',
+            loginPath: "/login",
+            homePath: "/"
         })
 
         const session = await satpam.onCookies(withTokenRequest.headers['cookie'])
-        it ('has cookie name test.testing', () => {
+        test ('has cookie name test.testing', () => {
             expect(satpam.cookieName).toEqual('test.testing')
         })
 
-        it ('has token string \"global.hook.token\"', () => {
+        test ('has token string \"global.hook.token\"', () => {
             expect(session.token).toEqual('global.hook.token')
         })
 
-        it ('has cookie name test.testing', () => {
+        test ('has cookie name test.testing', () => {
             expect(satpam.refreshCookie).toEqual('test.refresh')
         })
 
-        it ('has token string \"global.hook.token\"', () => {
+        test ('has token string \"global.hook.token\"', () => {
             expect(session.refresh?.token).toEqual('global.hook.refresh')
         })
     })
 })
-
-// describe('With Refresh Token', () => {
-
-// })
