@@ -58,8 +58,8 @@ export type SatpamOptions = {
 export const SatpamOptionsDefault: SatpamOptions = {
   name: 'satpam',
   loginPath: '/login',
-  homePath: '/home'
-}
+  homePath: '/home',
+};
 
 export class Satpam {
   /** found token */
@@ -137,12 +137,12 @@ export class Satpam {
 
   /** token setter */
   public set token(value: string) {
-    this._token = value
+    this._token = value;
   }
 
   /** refresh token setter */
   public set refreshToken(value: string) {
-    this._refreshToken = value
+    this._refreshToken = value;
   }
 
   /** full cookie name getter */
@@ -173,7 +173,7 @@ export class Satpam {
     };
   }
 
-  /** 
+  /**
    * refresh token getter
    * @type { token: string, serialized: string }
    */
@@ -363,29 +363,27 @@ export class Satpam {
    * @param {("public" | "private")} [type="private"]
    * @memberof Satpam
    */
-  public pageGuard(current: URL, type: "public" | "private" = "private") {
+  public pageGuard(current: URL, type: 'public' | 'private' = 'private') {
     /** if page is public, return access to true */
-    if (type === "public") return { access: true, redirect: null }
+    if (type === 'public') return { access: true, redirect: null };
 
-    const login = new URL(this._loginPath, current.origin)
-    const home = new URL(this._homePath, current.origin)
+    const login = new URL(this._loginPath, current.origin);
+    const home = new URL(this._homePath, current.origin);
 
     /** check for session empty */
     if (!this.session.status) {
-
       /** session empty, but not on login page. */
       if (login.href !== this._currentURL.href) {
-        return { access: false, redirect: login }
+        return { access: false, redirect: login };
       }
     } else {
-
       /** session is exist, but on login page */
       if (this._currentURL.href === login.href) {
-        return { access: true, redirect: home }
+        return { access: true, redirect: home };
       }
     }
 
     /** return on session exist and have access */
-    return { access: true, redirect: null }
+    return { access: true, redirect: null };
   }
 }

@@ -19,6 +19,7 @@ describe("Import & Export Test", () => {
         expect(outside).toBeUndefined()
 
         const ability = abilities.get("app/login")
+        console.log(abilities.export())
         expect(ability?.has('signin')).toBeTruthy()
     })
 
