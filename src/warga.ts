@@ -1,45 +1,32 @@
+import { Abilities, Ability } from "./abilities"
+export class Warga<T=object> {
 
-export type Aksi = {
-    key: string;
-    acts: Array<string>;
-}
+  public meta: T
+  private _abilities: Abilities;
 
-export type Halaman = {
-    path: string;
-    title: string;
-    actions: Array<Aksi>;
-}
+  constructor(abilities: Abilities | string[], meta: T = {} as T) {
+    this.meta = meta
 
-export class Warga {
-
-    private _access: Array<string>
-
-    constructor(access: Array<string>) {
-        this._access = access
+    if (abilities instanceof Abilities) {
+      this._abilities = abilities
+    } else {
+      this._abilities = new Abilities()
+      this._abilities.import(abilities)
     }
+  }
 
-    private _canAbility(pagePath: string) {}
+  public get abilities() {
+    return this._abilities
+  }
 
-    private _pageAccessable(pagePath: string) {}
+  public on(path: string) {
+    return this._abilities.get(path)
+  }
 
-    public has(path: string) {}
-}
-
-export class Akses {
-
-    private _pages: Array<Halaman>
-
-    public definePage(path: string, title: string, actions: Array<Aksi>) {
-        const page: Halaman = { path, title, actions }
-        this._pages.push(page)
+  public gain(...abilities: Ability[] | string[]) {
+    if (typeof abilities[0] !== "string") {
+      this._abilities.push(...abilities as Ability[])
     }
-
-    public defineAction(key: string, acts: Array<string>){
-        const action: Aksi = { key, acts }
-        return action
-    }
-
-    public importRule(rules: Array<string>){}
-
-    public exportRule(){}
+    this._abilities.import(abilities as string[])
+  }
 }

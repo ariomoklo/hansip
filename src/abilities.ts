@@ -1,18 +1,30 @@
+import { Warga } from "./warga";
+
 /** action can be any key string for a single action like read/write/insert/update/delete/remove etc. */
 export type Action = 'read' | 'write' | 'insert' | 'update' | 'delete' | string;
 
 export type AbilitiesOptions = {
+  /** root path. default to @ */
   root: string;
-  actions?: Array<Action>;
-  ignodeInvalidToken?: boolean;
+  /** default actions. default to read, write, delete */
+  actions?: Action[];
+  /** ignoring invalid token when import. */
+  ignoreInvalidToken?: boolean;
 };
 
+/** default value for abilities options */
 export const AbilitiesOptionsDefault = {
   root: '@',
   actions: ['read', 'write', 'delete'],
-  ignodeInvalidToken: false,
+  ignoreInvalidToken: false,
 };
 
+/**
+ * utility function for shifting path to given root
+ * @param {string} path
+ * @param {string} root
+ * @return {string} new path 
+ */
 export function shiftPath(path: string, root: string) {
   const branch = path.split('/');
   const indexRoot = branch.indexOf(root);
@@ -20,6 +32,17 @@ export function shiftPath(path: string, root: string) {
   return branch.slice(indexRoot).join('/');
 }
 
+/**
+ * utility function for validating token
+ * @param {string} token
+ * @param {string} [root='']
+ * @return {*}  {{
+ *   result: boolean;
+ *   code: string;
+ *   message: string;
+ *   parsed?: { parent: string[]; key: string; actions: Action[] };
+ * }}
+ */
 export function validateToken(
   token: string,
   root: string = '',
@@ -86,9 +109,14 @@ export function validateToken(
 export class Ability {
   public key: string;
   public parent: string;
-  public actions: Array<Action>;
+  public actions: Action[];
 
-  constructor(path: string, actions: Array<Action>) {
+  /**
+   * Creates an instance of Ability.
+   * @param {string} path
+   * @param {Action[]} actions
+   */
+  constructor(path: string, actions: Action[]) {
     /** set ability actions */
     this.actions = actions;
 
@@ -120,7 +148,7 @@ export class Ability {
 
     if (valid.result && typeof ability === 'object') {
       this.key = ability.key;
-      this.add(...ability.actions);
+      this.gain(...ability.actions);
       if (ability.parent.length > 0) {
         this.parent = ability.parent.join('/');
       }
@@ -129,6 +157,26 @@ export class Ability {
     }
 
     throw new Error(`Hansip: detokenize error on [${token}][${valid.code}:${valid.message}]`);
+  }
+
+  public get root(): string {
+    return this.path.split('/')[0]
+  }
+
+  public set root(root: string) {
+    if (this.parent) {
+      let parent = this.parent
+      parent = shiftPath(parent, root)
+      if (parent === "") {
+        parent = `${root}/${this.parent}`
+      }
+
+      this.parent = parent
+      return
+    }
+    
+    this.parent = root
+    return
   }
 
   public get path(): string {
@@ -174,10 +222,28 @@ export class Ability {
   }
 
   /**
-   * add another action to ability path
-   * @param {...Array<string>} actions
+   * check if ability has any given actions
+   * @param actions
+   * @returns boolean
    */
-  public add(...actions: Array<string>) {
+  public hasAny(...actions: string[]): boolean {
+    return actions.map(act => this.has(act)).reduce((prev, curr) => prev || curr)
+  }
+  
+  /**
+   * check if ability has all given actions
+   * @param actions
+   * @returns boolean
+   */
+  public hasAll(...actions: string[]): boolean {
+    return actions.map(act => this.has(act)).reduce((prev, curr) => prev && curr)
+  }
+
+  /**
+   * add another action to ability
+   * @param {...string[]} actions
+   */
+  public gain(...actions: string[]) {
     // removing duplicates
     this.actions = [...new Set([...this.actions, ...actions])];
   }
@@ -199,18 +265,23 @@ export class Abilities {
 
   private _root: string;
 
-  private _actions: Array<string>;
+  private _actions: string[];
 
   private ignoreInvalid: boolean;
 
+  /**
+   * Creates an instance of Abilities.
+   * @param {AbilitiesOptions} [options=AbilitiesOptionsDefault]
+   * @memberof Abilities
+   */
   constructor(options: AbilitiesOptions = AbilitiesOptionsDefault) {
     this._abilities = new Map();
     this._root = options.root;
     this._actions = options.actions ?? AbilitiesOptionsDefault.actions;
-    this.ignoreInvalid = options.ignodeInvalidToken ?? AbilitiesOptionsDefault.ignodeInvalidToken;
+    this.ignoreInvalid = options.ignoreInvalidToken ?? AbilitiesOptionsDefault.ignoreInvalidToken;
   }
 
-  private _cutPath(path: string | Array<string>, root: string = '') {
+  private _cutPath(path: string | string[], root: string = '') {
     if (!root) root = this._root;
     if (typeof path !== 'string') {
       path = path.join('/');
@@ -240,28 +311,31 @@ export class Abilities {
 
   /**
    * import abilities from array tokens.
-   *
-   * @param {Array<string>} abilities
-   * @memberof Abilities
+   * @param {string[]} abilities
    */
-  public import(abilities: Array<string>) {
+  public import(abilities: string[]) {
     abilities.forEach((token) => {
       const v = this._validateToken(token, this._root);
       if (!v.result) return;
 
       let ability = new Ability(v.token, []);
-      const found = this.get(ability.path);
-      if (found) {
-        found.add(...ability.actions);
-        ability = found;
+      if (this.exist(ability.path)) {
+        const found = this.get(ability.path);
+        found.gain(...ability.actions);
+      } else {
+        this._abilities.set(ability.path, ability);
       }
-
-      this._abilities.set(ability.path, ability);
     });
   }
 
-  public export(root: string = '', compact = true): Array<string> {
-    const tokens: Array<string> = [];
+  /**
+   * export current abilities to array token
+   * @param {string} [root='']
+   * @param {boolean} [compact=true]
+   * @return {*}  {string[]}
+   */
+  public export(root: string = '', compact = true): string[] {
+    const tokens: string[] = [];
 
     if (compact) {
       for (let [path, value] of this._abilities) {
@@ -286,7 +360,13 @@ export class Abilities {
     return this._abilities.size;
   }
 
-  public add(path: string, ...actions: Array<string>) {
+  /**
+   * add new ability or set new action for existed abilities
+   * @param {string} path
+   * @param {...string[]} actions
+   * @memberof Abilities
+   */
+  public add(path: string, ...actions: string[]) {
     // add root to path if needed
     if (path.split('/')[0] !== this._root) {
       path = [this._root, path].join('/');
@@ -298,25 +378,122 @@ export class Abilities {
     }
 
     let ability = new Ability(path, actions);
-    const found = this.get(path);
-    if (found) {
-      found.add(...ability.actions);
-      ability = found;
+    if (this.exist(path)) {
+      const found = this.get(path);
+      found.gain(...ability.actions);
+    } else {
+      this._abilities.set(path, ability);
     }
-    this._abilities.set(path, ability);
   }
 
+  /**
+   * push/insert new ability
+   * @param {...Ability[]} abilities
+   * @memberof Abilities
+   */
+  public push(...abilities: Ability[]) {
+    abilities.forEach(ability => {
+      if (ability.root !== this._root) {
+        ability.root = this._root
+      }
+
+      if (this.exist(ability.path)) {
+        const found = this.get(ability.path);
+        found.gain(...ability.actions);
+      } else {
+        this._abilities.set(ability.path, ability)
+      }
+    })
+  }
+
+  /**
+   * check if ability path exist
+   * @param {string} path
+   * @memberof Abilities
+   */
+  public exist(path: string) {
+    // add root to path if needed
+    if (path.split('/')[0] !== this._root) {
+      path = `${this._root}/${path}`;
+    }
+
+    const ability = this._abilities.get(path)
+    return ability !== undefined
+  }
+
+  /**
+   * get ability by path
+   * @param {string} path
+   * @memberof Abilities
+   */
   public get(path: string) {
     // add root to path if needed
     if (path.split('/')[0] !== this._root) {
-      path = [this._root, path].join('/');
+      path = `${this._root}/${path}`;
     }
 
     const ability = this._abilities.get(path);
-    if (!ability) return undefined;
 
-    // TODO: create add function to add sub ability
+    /**
+     * check if ability has an action
+     * @param action
+     * @returns boolean
+     */
+    const has = (action: string) => {
+      return ability?.has(action) ?? false
+    }
 
-    return ability;
+    /**
+     * check if ability has any given actions
+     * @param {...string[]} actions
+     * @return boolean
+     */
+    const hasAny = (...actions: string[]) => {
+      return ability?.hasAny(...actions) ?? false
+    }
+
+    /**
+     * check if ability has all given actions
+     * @param {...string[]} actions
+     * @returns boolean
+     */
+    const hasAll = (...actions: string[]) => {
+      return ability?.hasAll(...actions) ?? false
+    }
+
+    /**
+     * give ability new action
+     * @param actions
+     */
+    const gain = (...actions: string[]) => {
+      if (ability) {
+        ability.gain(...actions)
+        this._abilities.set(ability.path, ability)
+      }
+    }
+
+    /**
+     * add new sub ability from current ability path
+     * @param path 
+     * @param actions
+     */
+    const add = (path: string, ...actions: string[]) => {
+      if (!ability) return undefined
+      path = `${ability.path}/path`
+      this.add(path, ...actions)
+      return this.get(path)
+    }
+
+    return { has, hasAny, hasAll, gain, add };
+  }
+
+  /**
+   * install abilities to new user
+   *
+   * @param {T} meta user data
+   * @memberof Abilities
+   */
+  public setupUser<T=any>(meta: T) {
+    return new Warga(this, meta)
   }
 }

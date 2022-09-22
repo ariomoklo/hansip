@@ -1,5 +1,5 @@
 import { describe, expect, it, test } from "vitest";
-import { Abilities } from "../src/abilities";
+import { Abilities, Ability } from "../src/abilities";
 
 describe("Import & Export Test", () => {
     const abilities = new Abilities({ root: "app" })
@@ -15,28 +15,27 @@ describe("Import & Export Test", () => {
     })
 
     test("import: root on app. path before app removed", () => {
-        const outside = abilities.get("outside/app/login")
-        expect(outside).toBeUndefined()
+        const outside = abilities.exist("outside/app/login")
+        expect(outside).toBeFalsy()
 
         const ability = abilities.get("app/login")
-        console.log(abilities.export())
-        expect(ability?.has('signin')).toBeTruthy()
+        expect(ability.has('signin')).toBeTruthy()
     })
 
     test("import: has app/list:read", () => {
         const ability = abilities.get("app/list")
-        expect(ability?.has('read')).toBeTruthy()
+        expect(ability.has('read')).toBeTruthy()
     })
     
     test("import: has app/list:update", () => {
         const ability = abilities.get("app/list")
-        expect(ability?.has('update')).toBeTruthy()
+        expect(ability.has('update')).toBeTruthy()
     })
 
     test("import: has app/user/settings:read:update", () => {
         const ability = abilities.get("app/user/settings")
-        expect(ability?.has('read')).toBeTruthy()
-        expect(ability?.has('update')).toBeTruthy()
+        expect(ability.has('read')).toBeTruthy()
+        expect(ability.has('update')).toBeTruthy()
     })
 
     test("export: compact mode", () => {
@@ -64,9 +63,31 @@ describe("add ability", () => {
 
         const ability = abilities.get("@/home")
         expect(ability).not.toBeUndefined()
-        expect(ability?.has("read")).toBeTruthy()
-        expect(ability?.has("write")).toBeTruthy()
-        expect(ability?.has("delete")).toBeTruthy()
+        expect(ability.has("read")).toBeTruthy()
+        expect(ability.has("write")).toBeTruthy()
+        expect(ability.has("delete")).toBeTruthy()
+    })
+})
+
+describe("push abilities", () => {
+    const abilities = new Abilities({ root: "hero" })
+    const superman = new Ability("hero/dc/superman", [ "fly", "laser-vision", "super-strength"])
+    const ironman = new Ability("marvel/ironman", [ "fly", "laser", "missile", "iron-armor" ])
+    const sentai = new Ability("sentai", [ "henshin", "cool" ])
+    abilities.push(superman, ironman, sentai)
+    
+    test("has 3 abilities", () => expect(abilities.count).toBe(3))
+    test("test sentai ability", () => {
+        expect(abilities.get("sentai").has("henshin")).toBeTruthy()
+        expect(abilities.get("hero/sentai").has("cool")).toBeTruthy()
+    })
+    test("test ironman ability", () => {
+        expect(abilities.get("marvel/ironman").has("fly")).toBeTruthy()
+        expect(abilities.get("hero/marvel/ironman").has("laser")).toBeTruthy()
+    })
+    test("test superman ability", () => {
+        expect(abilities.get("dc/superman").has("fly")).toBeTruthy()
+        expect(abilities.get("hero/dc/superman").has("super-strength")).toBeTruthy()
     })
 })
 
@@ -87,5 +108,29 @@ describe("get ability", () => {
         expect(abilities.get("@/settings")?.has("read")).toBeTruthy()
         expect(abilities.get("@/settings")?.has("write")).toBeTruthy()
         expect(abilities.get("@/settings")?.has("delete")).toBeTruthy()
+    })
+})
+
+describe("setup user from abilities", () => {
+    const abilities = new Abilities({ root: "onepiece", ignoreInvalidToken: true })
+    abilities.add("haki", "observation", "armament", "conqueror")
+    abilities.add("devil-fruit/gomu-gomu", "strecth", "electricity-resistant")
+    abilities.add("devil-fruit/hito-hito/nika", "strecth", "inflate", "bleached")
+    const luffy = abilities.setupUser({ name: "luffy", occupation: "pirate" })
+
+    test("luffy is a pirate", () => {
+        expect(luffy.meta.occupation).toBe("pirate")
+    })
+
+    test("luffy has conqueror haki", () => {
+        expect(luffy.on("haki").has("conqueror"))
+    })
+
+    test("luffy eat gomu-gomu no mi", () => {
+        expect(luffy.on("devil-fruit/gomu-gomu").hasAll("strecth", "electricity-resistant"))
+    })
+
+    test("wait, luffy actually eat hito hito no mi model nika", () => {
+        expect(luffy.on("devil-fruit/hito-hito/nika").hasAll("strecth", "inflate", "bleached"))
     })
 })
