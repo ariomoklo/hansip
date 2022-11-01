@@ -4,6 +4,12 @@ Authorization library for building SSR app.
 
 Hansip adalah authorisasi library. Konsep dari hansip adalah authentikasi haruslah berasal dari API dan aplikasi front-end hanya melakukan authorisasi terhadap token yang diberikan oleh API. Hansip akan mencari token dalam cookie / header / url mengikuti kebutuhan mu.
 
+>
+> this package is not stable.
+>
+> use with your own risk.
+> 
+
 ## Usage
 
 >
@@ -12,112 +18,68 @@ Hansip adalah authorisasi library. Konsep dari hansip adalah authentikasi harusl
 > `npm install hansip` | `yarn add hansip` | `pnpm add hansip`
 >
 
-### Astro example
+### createCookieSession
 
-```astro
----
-// Astro example
-import { Satpam } from 'hansip'
+``` ts
+import { createCookieSession } from 'hansip'
 
-/** 
- * create satpam instance with unique prefix.
- * you can create many satpam instance.
- */
-const satpam = new Satpam("uniquePrefix")
+// get your cookie
+const cookie = request.headers.get('cookie')
+const session = createCookieSession({
+  cookie: cookie,
+  tokenName: 'token'      // cookie name for jwt token.
+  refreshName: 'refresh'  // token refresh name. optional
+  cookieOptions: { 
+    /**
+      
+      check cookie.serialize options for detailed info
+      @link https://www.npmjs.com/package/cookie
 
-const cookies = Astro.request.headers.get('cookie') ?? ''
-const session = await satpam.onCookies(cookies, async (token: string) => {
-
-  /**
-   * This is validation hook
-   * you can do token validation here.
-   * 
-   * you can return new token here if you want:
-   * token = 'new token'
-   * return token
-   */
-
-  /** do token validation */
-  if (token) {
-    const user = await axios.get('/user/me', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-
-    if (user) return token
-    else return null
+      domain?: string | undefined,
+      expires?: Date | undefined,
+      httpOnly?: boolean | undefined,
+      maxAge?: number | undefined,
+      path?: string | undefined,
+      priority?: 'low' | 'medium' | 'high' | undefined,
+      sameSite?: true | false | 'lax' | 'strict' | 'none' | undefined,
+      secure?: boolean | undefined,
+    */
   }
-
-  return null
 })
 
-/** redirect on login */
-if (!session.status) {
-  return Astro.redirect('/login')
+const { token } = session.get()
+
+// do anything you want with token.
+if (!token) {
+  // redirect on token not found or validation false
+  return redirect()
 }
 
-/** set cookie to response */
-Astro.response.headers.set('Set-Cookie', session.serialized)
+response.headers.set('Set-Cookie', session.serialize.token())
+response.headers.set('Set-Cookie', session.serialize.refresh())
+// send response with token in cookie
 
----
-
-<h1>Private Page: Hello World!</h1>
 ```
 
-### Nuxt.js example
+### detectURL
 
-<a href="https://stackblitz.com/edit/nuxt-starter-rse68b?file=hansip/middleware.js">
-  <img
-    src="https://developer.stackblitz.com/img/open_in_stackblitz.svg"
-    alt="Open in StackBlitz"
-  />
-</a>
+``` ts
+import { detectURL } from 'hansip'
 
-```js
-// auth/hansip.js
+const session = createCookieSession({ tokenName: 'token' })
+const url = new URL(request.url, 'http://localhost')
 
-import { Satpam } from "hansip"
-import axios from "axios"
-
-export default async function (req, res, next) {
+const validate = detectURL(url, { tokenName: 'access_token', refreshName: 'refresh_token' })
+if (validate.token) {
   
-  const satpam = new Satpam("hansip")
-  const session = await satpam.onCookies(req.headers['cookie'], async (token) => {
-    
-    if (token) {
-      const user = await axios.get('/user/me', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+  // do anything you want with token and refresh token
 
-      if (user) return token
-      else return null
-    }
+  session.set(validate.token, validate.refresh)
+  response.headers.set('Set-Cookie', session.serialize.token())
+  response.headers.set('Set-Cookie', session.serialize.refresh())
 
-    return null
-  })
-
-  const session = satpam.session;
-  if (!session.status) {
-    if (req.url === '/login') {
-      next();
-      return;
-    }
-
-    res.writeHead(302, { Location: '/login' });
-    res.end();
-    return;
-  }
-
-  res.setHeader('Set-Cookie', session.serialized);
-  next();
+  // send response
 }
-```
 
-then don't forget to add `auth/hansip.js` to nuxt.config.js
-
-```js
-export default {
-  {
-    serverMiddleware: ['~/auth/hansip']
-  }
-}
+// redirect on token undefined
 ```
