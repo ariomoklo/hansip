@@ -1,4 +1,4 @@
-import { Warga } from "./warga";
+import { Warga } from './warga';
 
 /** action can be any key string for a single action like read/write/insert/update/delete/remove etc. */
 export type Action = 'read' | 'write' | 'insert' | 'update' | 'delete' | string;
@@ -23,7 +23,7 @@ export const AbilitiesOptionsDefault = {
  * utility function for shifting path to given root
  * @param {string} path
  * @param {string} root
- * @return {string} new path 
+ * @return {string} new path
  */
 export function shiftPath(path: string, root: string) {
   const branch = path.split('/');
@@ -160,23 +160,23 @@ export class Ability {
   }
 
   public get root(): string {
-    return this.path.split('/')[0]
+    return this.path.split('/')[0];
   }
 
   public set root(root: string) {
     if (this.parent) {
-      let parent = this.parent
-      parent = shiftPath(parent, root)
-      if (parent === "") {
-        parent = `${root}/${this.parent}`
+      let parent = this.parent;
+      parent = shiftPath(parent, root);
+      if (parent === '') {
+        parent = `${root}/${this.parent}`;
       }
 
-      this.parent = parent
-      return
+      this.parent = parent;
+      return;
     }
-    
-    this.parent = root
-    return
+
+    this.parent = root;
+    return;
   }
 
   public get path(): string {
@@ -227,16 +227,16 @@ export class Ability {
    * @returns boolean
    */
   public hasAny(...actions: string[]): boolean {
-    return actions.map(act => this.has(act)).reduce((prev, curr) => prev || curr)
+    return actions.map((act) => this.has(act)).reduce((prev, curr) => prev || curr);
   }
-  
+
   /**
    * check if ability has all given actions
    * @param actions
    * @returns boolean
    */
   public hasAll(...actions: string[]): boolean {
-    return actions.map(act => this.has(act)).reduce((prev, curr) => prev && curr)
+    return actions.map((act) => this.has(act)).reduce((prev, curr) => prev && curr);
   }
 
   /**
@@ -392,18 +392,18 @@ export class Abilities {
    * @memberof Abilities
    */
   public push(...abilities: Ability[]) {
-    abilities.forEach(ability => {
+    abilities.forEach((ability) => {
       if (ability.root !== this._root) {
-        ability.root = this._root
+        ability.root = this._root;
       }
 
       if (this.exist(ability.path)) {
         const found = this.get(ability.path);
         found.gain(...ability.actions);
       } else {
-        this._abilities.set(ability.path, ability)
+        this._abilities.set(ability.path, ability);
       }
-    })
+    });
   }
 
   /**
@@ -417,8 +417,8 @@ export class Abilities {
       path = `${this._root}/${path}`;
     }
 
-    const ability = this._abilities.get(path)
-    return ability !== undefined
+    const ability = this._abilities.get(path);
+    return ability !== undefined;
   }
 
   /**
@@ -440,8 +440,8 @@ export class Abilities {
      * @returns boolean
      */
     const has = (action: string) => {
-      return ability?.has(action) ?? false
-    }
+      return ability?.has(action) ?? false;
+    };
 
     /**
      * check if ability has any given actions
@@ -449,8 +449,8 @@ export class Abilities {
      * @return boolean
      */
     const hasAny = (...actions: string[]) => {
-      return ability?.hasAny(...actions) ?? false
-    }
+      return ability?.hasAny(...actions) ?? false;
+    };
 
     /**
      * check if ability has all given actions
@@ -458,8 +458,8 @@ export class Abilities {
      * @returns boolean
      */
     const hasAll = (...actions: string[]) => {
-      return ability?.hasAll(...actions) ?? false
-    }
+      return ability?.hasAll(...actions) ?? false;
+    };
 
     /**
      * give ability new action
@@ -467,22 +467,22 @@ export class Abilities {
      */
     const gain = (...actions: string[]) => {
       if (ability) {
-        ability.gain(...actions)
-        this._abilities.set(ability.path, ability)
+        ability.gain(...actions);
+        this._abilities.set(ability.path, ability);
       }
-    }
+    };
 
     /**
      * add new sub ability from current ability path
-     * @param path 
+     * @param path
      * @param actions
      */
     const add = (path: string, ...actions: string[]) => {
-      if (!ability) return undefined
-      path = `${ability.path}/path`
-      this.add(path, ...actions)
-      return this.get(path)
-    }
+      if (!ability) return undefined;
+      path = `${ability.path}/path`;
+      this.add(path, ...actions);
+      return this.get(path);
+    };
 
     return { has, hasAny, hasAll, gain, add };
   }
@@ -493,7 +493,7 @@ export class Abilities {
    * @param {T} meta user data
    * @memberof Abilities
    */
-  public setupUser<T=any>(meta: T) {
-    return new Warga(this, meta)
+  public setupUser<T = any>(meta: T) {
+    return new Warga(this, meta);
   }
 }
