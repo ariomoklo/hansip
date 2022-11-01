@@ -1,10 +1,14 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "module": "es6",
-    "declaration": true,
     "outDir": "./dist",
-    "lib": [ "es2016", "dom" ]
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "target": "ES2019",
+    "strict": true,
+    "incremental": true,
+    "skipLibCheck": true
   },
   "files": ["./src/index.ts"],
   "include": [ "./scr/**/*" ],
