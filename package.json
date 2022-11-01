@@ -1,6 +1,6 @@
 {
     "name": "hansip",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "description": "Authorization library for building SSR app.",
     "author": {
         "name": "Ario Widiatmoko",
