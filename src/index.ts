@@ -1,9 +1,6 @@
 import type { CookieOptions, CookieSession, SessionValue } from './types';
 import * as cookie from 'cookie';
 
-export * from './satpam';
-export { serializeCookie, parseCookies } from './utility';
-
 export const createCookieSession = (
   opts: {
     tokenName: string;
