@@ -81,3 +81,7 @@ response.headers.set('Set-Cookie', session.serialize.token())
 response.headers.set('Set-Cookie', session.serialize.refresh())
 // send response with token in cookie
 ```
+
+## Target
+
+- [ ] JWT utility / helper
