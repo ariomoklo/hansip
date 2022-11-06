@@ -75,8 +75,12 @@ if (!found.token) {
 }
 
 // do anything you want with token and refresh token
+const validatedToken = found.token
+if (!validatedToken) {
+  // if token not valid redirect
+}
 
-session.set(validate.token, validate.refresh)
+session.set(validatedToken, validatedToken)
 response.headers.set('Set-Cookie', session.serialize.token())
 response.headers.set('Set-Cookie', session.serialize.refresh())
 // send response with token in cookie
@@ -85,3 +89,4 @@ response.headers.set('Set-Cookie', session.serialize.refresh())
 ## Target
 
 - [ ] JWT utility / helper
+- [ ] ... ?
