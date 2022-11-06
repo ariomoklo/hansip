@@ -27,8 +27,8 @@ import { createCookieSession } from 'hansip'
 const cookie = request.headers.get('cookie')
 const session = createCookieSession({
   cookie: cookie,
-  tokenName: 'token'      // cookie name for jwt token.
-  refreshName: 'refresh'  // token refresh name. optional
+  tokenName: 'token',      // cookie name for jwt token.
+  refreshName: 'refresh',  // token refresh name. optional
   cookieOptions: { 
     /**
       
@@ -64,22 +64,20 @@ response.headers.set('Set-Cookie', session.serialize.refresh())
 ### detectURL
 
 ``` ts
-import { detectURL } from 'hansip'
+import { detectURL, createCookieSession } from 'hansip'
 
 const session = createCookieSession({ tokenName: 'token' })
 const url = new URL(request.url, 'http://localhost')
 
-const validate = detectURL(url, { tokenName: 'access_token', refreshName: 'refresh_token' })
-if (validate.token) {
-  
-  // do anything you want with token and refresh token
-
-  session.set(validate.token, validate.refresh)
-  response.headers.set('Set-Cookie', session.serialize.token())
-  response.headers.set('Set-Cookie', session.serialize.refresh())
-
-  // send response
+const found = detectURL(url, { tokenName: 'access_token', refreshName: 'refresh_token' })
+if (!found.token) {
+  // redirect on token undefined
 }
 
-// redirect on token undefined
+// do anything you want with token and refresh token
+
+session.set(validate.token, validate.refresh)
+response.headers.set('Set-Cookie', session.serialize.token())
+response.headers.set('Set-Cookie', session.serialize.refresh())
+// send response with token in cookie
 ```
